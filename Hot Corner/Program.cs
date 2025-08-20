@@ -3,7 +3,7 @@ using System.Runtime.InteropServices;
 
 namespace Hot_Corner;
 
-internal static partial class Program
+internal partial class Program
 {
     // Use these constants to configure sensitivity of the hot corner
     // Size of the hot corner
@@ -25,16 +25,25 @@ internal static partial class Program
     [LibraryImport("user32.dll", EntryPoint = "keybd_event")]
     private static partial void keybd_event(byte bVk, byte bScan, int dwFlags, int dwExtraInfo);
 
+    private List<Rectangle> _hotCorners = [];
+    // Variable to set hot corner as active when mouse enters
+    // -- Used to prevent continually activating while mouse is "hot"
+    private bool _hotCornerActive = false;
 
-    static void Main()
+    internal Program()
     {
         // Calculate rectangles for each hot corner (one on each screen)
-        IEnumerable<Rectangle> hotCorners = GetHotCorners();
+        UpdateHotCorners();
+    }
 
-        // Variable to set hot corner as active when mouse enters
-        // -- Used to prevent continually activating while mouse is "hot"
-        bool hotCornerActive = false;
+    public static void Main()
+    {
+        Program hotCornerApp = new();
+        hotCornerApp.Run();
+    }
 
+    private void Run()
+    {
         // Loop forever - Can be terminated by holding Ctrl + Shift while moving mouse to hot corner
         while (true)
         {
@@ -42,11 +51,11 @@ internal static partial class Program
             Thread.Sleep(CHECK_DELAY);
 
             // If the mouse is not in a hot corner, continue to next iteration
-            if (!IsCursorHot(hotCorners))
+            if (!IsCursorHot())
             {
                 // If the mouse has left the hot corner after activating it, set hot corner as inactive
-                if (hotCornerActive)
-                    hotCornerActive = false;
+                if (_hotCornerActive)
+                    _hotCornerActive = false;
 
                 continue;
             }
@@ -55,11 +64,11 @@ internal static partial class Program
             // Wait for specified time
             Thread.Sleep(DEBOUNCE_TIME);
             // Recheck if corner should be activated
-            if (!IsCursorHot(hotCorners))
+            if (!IsCursorHot())
                 continue;
 
             // If the hot corner is already activated, continue to next iteration
-            if (hotCornerActive)
+            if (_hotCornerActive)
                 continue;
 
             // If no mouse buttons as held
@@ -76,31 +85,29 @@ internal static partial class Program
 
             // Set hot corner as active so it is not continually triggered
             // If a mouse button has been held still set as active so corner is not triggered upon release
-            hotCornerActive = true;
+            _hotCornerActive = true;
         }
     }
 
     // Function to create list of hot corners from screens
-    private static IEnumerable<Rectangle> GetHotCorners()
+    private void UpdateHotCorners()
     {
-        List<Rectangle> hotCorners = [];
+        _hotCorners.Clear();
 
         foreach (Screen screen in Screen.AllScreens)
-            hotCorners.Add(
+            _hotCorners.Add(
                 new(screen.Bounds.Left, screen.Bounds.Top, HOT_CORNER_SIZE, HOT_CORNER_SIZE)
             );
-
-        return hotCorners;
     }
 
     // Function to check if cursor is in a hot corner
-    private static bool IsCursorHot(IEnumerable<Rectangle> hotCorners)
+    private bool IsCursorHot()
     {
         // Store cursor position
         Point cursorPosition = Cursor.Position;
 
         // For each hot corner check is it contains the cursor
-        foreach (Rectangle hotCorner in hotCorners)
+        foreach (Rectangle hotCorner in _hotCorners)
             if (hotCorner.Contains(cursorPosition))
                 return true;
 
