@@ -28,6 +28,9 @@ internal static partial class Program
 
     static void Main()
     {
+        // Calculate rectangles for each hot corner (one on each screen)
+        IEnumerable<Rectangle> hotCorners = GetHotCorners();
+
         // Variable to set hot corner as active when mouse enters
         // -- Used to prevent continually activating while mouse is "hot"
         bool hotCornerActive = false;
@@ -39,7 +42,7 @@ internal static partial class Program
             Thread.Sleep(CHECK_DELAY);
 
             // If the mouse is not in a hot corner, continue to next iteration
-            if (!IsCursorHot())
+            if (!IsCursorHot(hotCorners))
             {
                 // If the mouse has left the hot corner after activating it, set hot corner as inactive
                 if (hotCornerActive)
@@ -52,7 +55,7 @@ internal static partial class Program
             // Wait for specified time
             Thread.Sleep(DEBOUNCE_TIME);
             // Recheck if corner should be activated
-            if (!IsCursorHot())
+            if (!IsCursorHot(hotCorners))
                 continue;
 
             // If the hot corner is already activated, continue to next iteration
@@ -77,19 +80,30 @@ internal static partial class Program
         }
     }
 
-    // Function to check if cursor is in the top left corner of any screen
-    private static bool IsCursorHot()
+    // Function to create list of hot corners from screens
+    private static IEnumerable<Rectangle> GetHotCorners()
     {
-        // Get the screen the mouse cursor is currently on
-        Screen currentScreen = Screen.FromPoint(Cursor.Position);
+        List<Rectangle> hotCorners = [];
 
-        // If the cursor is at the top left within the specified hot corner size
-        if (Cursor.Position.X >= currentScreen.WorkingArea.Left
-            && Cursor.Position.X <= currentScreen.WorkingArea.Left + HOT_CORNER_SIZE
-            && Cursor.Position.Y >= currentScreen.WorkingArea.Top
-            && Cursor.Position.Y <= currentScreen.WorkingArea.Top + HOT_CORNER_SIZE
-        )
-            return true;
+        foreach (Screen screen in Screen.AllScreens)
+            hotCorners.Add(
+                new(screen.Bounds.Left, screen.Bounds.Top, HOT_CORNER_SIZE, HOT_CORNER_SIZE)
+            );
+
+        return hotCorners;
+    }
+
+    // Function to check if cursor is in a hot corner
+    private static bool IsCursorHot(IEnumerable<Rectangle> hotCorners)
+    {
+        // Store cursor position
+        Point cursorPosition = Cursor.Position;
+
+        // For each hot corner check is it contains the cursor
+        foreach (Rectangle hotCorner in hotCorners)
+            if (hotCorner.Contains(cursorPosition))
+                return true;
+
         return false;
     }
 
