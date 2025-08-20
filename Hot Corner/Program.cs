@@ -1,4 +1,5 @@
-﻿//using System.Diagnostics;
+﻿using Microsoft.Win32;
+//using System.Diagnostics;
 using System.Runtime.InteropServices;
 
 namespace Hot_Corner;
@@ -34,12 +35,22 @@ internal partial class Program
     {
         // Calculate rectangles for each hot corner (one on each screen)
         UpdateHotCorners();
+
+        // Listen for display change event
+        SystemEvents.DisplaySettingsChanged += OnDisplaySettingsChanged;
     }
 
     public static void Main()
     {
         Program hotCornerApp = new();
-        hotCornerApp.Run();
+        try
+        {
+            hotCornerApp.Run();
+        }
+        finally
+        {
+            hotCornerApp.Cleanup();
+        }
     }
 
     private void Run()
@@ -145,19 +156,29 @@ internal partial class Program
         // If mouse has entered hot corner with no mouse or keyboard buttons held
         //else
         //{
-            // Activate Task View by simulating keyboard button presses
-            // -- This allows the hot corner to activate Task View on remote machine when using Remote Desktop
+        // Activate Task View by simulating keyboard button presses
+        // -- This allows the hot corner to activate Task View on remote machine when using Remote Desktop
 
-            // Hold WIN, press tab then release WIN button
-            KeyEvent(VK_LWIN, KeyAction.Down);
-            KeyEvent(VK_TAB, KeyAction.Press);
-            KeyEvent(VK_LWIN, KeyAction.Up);
+        // Hold WIN, press tab then release WIN button
+        KeyEvent(VK_LWIN, KeyAction.Down);
+        KeyEvent(VK_TAB, KeyAction.Press);
+        KeyEvent(VK_LWIN, KeyAction.Up);
 
-            // If executing this code when CTRL is held, use the following
-            // to release CTRL temporally while Win+Tab is pressed
-            //KeyEvent(VK_CONTROL, KeyAction.Up);
-            //...Press Win+Tab
-            //KeyEvent(VK_CONTROL, KeyAction.Down);
+        // If executing this code when CTRL is held, use the following
+        // to release CTRL temporally while Win+Tab is pressed
+        //KeyEvent(VK_CONTROL, KeyAction.Up);
+        //...Press Win+Tab
+        //KeyEvent(VK_CONTROL, KeyAction.Down);
         //}
+    }
+
+    private void OnDisplaySettingsChanged(object? sender, EventArgs e)
+    {
+        UpdateHotCorners();
+    }
+
+    private void Cleanup()
+    {
+        SystemEvents.DisplaySettingsChanged -= OnDisplaySettingsChanged;
     }
 }
